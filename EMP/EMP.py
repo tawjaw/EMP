@@ -1,12 +1,32 @@
 from PIL import Image, ImageDraw
 import random
+import csv
+
+def savePieces(pieces, outputFile):
+    file = open(outputFile, 'w')
+    for piece in pieces:
+        file.write(str(piece[0])+','+str(piece[1])+','+str(piece[2])+','+str(piece[3])+'\n')
+    file.close()
+
+def loadPieces(inputFile):
+    """Reads the puzzle pieces from a csv file and returns a list with all the pieces.  
+    """
+    file = open(inputFile)
+    reader = csv.reader(file,delimiter=',')
+    puzzle = list()
+    for row in reader:
+        piece = list(map(int,row))
+        puzzle.append(piece)
+    file.close()
+    return puzzle
+
 
 def _drawPiece(dr, position, piece, colors, pieceLength):
     """
     Position: top left corner of the square to draw the puzzle
     """
     if all(x == -1 for x in piece): return 
-    elif all(x == -2 for x in piece):
+    elif all(x == -2 or x == None for x in piece):
         dr.polygon([(position[0],position[1]), (position[0]+pieceLength/2, position[1]+pieceLength/2),
             (position[0],position[1]+pieceLength)], fill="white", outline="black")
         dr.polygon([(position[0],position[1]), (position[0]+pieceLength/2, position[1]+pieceLength/2),\
@@ -50,7 +70,13 @@ def drawPuzzle(puzzle, pieceLength=100, colors=None):
             It is recommended to keep "black" at index 0 as it is used to draw frames in framed EMPs.
     """
     if colors == None:
-        colors = ["black","blue","brown","red","yellow","green","orange","beige","turquoise","pink"]
+        colors =["black","blue","brown","red","yellow","green","orange","beige","turquoise","pink",'indianred',
+ 'magenta', 'darkviolet', 'salmon', 'lightcyan', 'darkslateblue', 'snow', 'blueviolet', 'dimgrey', 'cyan', 'deeppink',
+ 'sienna', 'lightyellow',   'goldenrod', 'darkgreen', 'deepskyblue', 'forestgreen', 'lawngreen', 'linen', 'darkmagenta',
+ 'gray', 'olivedrab', 'mediumslateblue', 'dimgray', 'violet', 'lightskyblue', 'peru', 'brown', 'royalblue', 'aqua', 'darkgray',
+  'coral', 'ivory', 'slategrey', 'lavender',   'crimson',  'orchid', 'moccasin', 'gold']
+        
+#         []
 
     gridSize = [0,0]
     for row in puzzle:
@@ -80,9 +106,128 @@ def _rotate(piece, n):
     return piece[n:] + piece[:n]
 
 def _validPiece(piece):
+    #print(piece)
     if all(x == -1 for x in piece): return False
     else: return True
     
+def _emptyPiece(piece):
+    if all((x == -2 or x == None) for x in piece) : return True
+    else: return False
+
+def _pieceMatch(grid, piece, position, EMPType='SF'):
+    gridSize_Y = len(grid)
+    gridSize_X = len(grid[0])
+    idxRow = position[0]
+    idxPiece = position[1]
+    isMatch = False
+    
+    isMatch = True
+    #left edge
+    if not(idxPiece == 0  or not _validPiece(grid[idxRow][idxPiece-1])):
+        if not _emptyPiece(grid[idxRow][idxPiece-1]):
+            if piece[0] != grid[idxRow][idxPiece-1][2]: 
+                isMatch = False
+        elif EMPType == 'SF' and piece[0] == 0:
+            isMatch = False
+    elif EMPType == 'SF':
+        if piece[0] != 0: isMatch = False
+
+    #top edge
+    if not(idxRow == 0 or not _validPiece(grid[idxRow-1][idxPiece])):
+        if not _emptyPiece(grid[idxRow-1][idxPiece]):
+            if piece[1] != grid[idxRow-1][idxPiece][3]:
+                isMatch = False
+        elif EMPType == 'SF' and piece[1] == 0:
+            isMatch = False
+    elif EMPType == 'SF':
+        if piece[1] != 0: isMatch = False
+            
+    #right edge
+    if not(idxPiece == gridSize_X-1 or not _validPiece(grid[idxRow][idxPiece+1])):
+        if not _emptyPiece(grid[idxRow][idxPiece+1]):
+            if piece[2] != grid[idxRow][idxPiece+1][0]:                   
+                isMatch = False
+        elif EMPType == 'SF' and piece[2] == 0:
+            isMatch = False
+    elif EMPType == 'SF':
+        if piece[2] != 0: isMatch = False
+            
+    #bottom edge
+    if not(idxRow == gridSize_Y-1 or not _validPiece(grid[idxRow+1][idxPiece])):
+        if not _emptyPiece(grid[idxRow+1][idxPiece]):
+            if piece[3] != grid[idxRow+1][idxPiece][1]: 
+                isMatch = False
+        elif EMPType == 'SF' and piece[3] == 0:
+            isMatch = False
+    elif EMPType == 'SF':
+        if piece[3] != 0: isMatch = False
+        
+    if isMatch:
+        return True
+    
+    return False
+
+def _nextPosition(grid, currentPos):
+    gridSize_Y = len(grid)
+    gridSize_X = len(grid[0])
+    pos = None
+    if currentPos[1] == gridSize_X-1:
+        pos = [currentPos[0]+1, 0]
+    else:
+        pos = [currentPos[0], currentPos[1]+1]
+    if pos[0] >= gridSize_Y:
+        return False
+    
+    while not _validPiece(grid[pos[0]][pos[1]]):
+        #print(pos)
+        if pos[1] == gridSize_X-1:
+            pos = [pos[0]+1, 0]
+        else:
+            pos = [pos[0], pos[1]+1]
+        
+        if pos[0] >= gridSize_Y:
+            return False
+
+
+    return pos   
+        
+def _removePiece(piece, pieces, rotate=True):
+    if rotate:
+        for i in range(4):
+            try:
+                piece = _rotate(piece, 1)
+                pieces.remove(piece[:])
+                return
+            except:
+                i = 0
+        raise Exception("piece not in list to remove")
+    else:
+        pieces.remove(piece[:])
+        
+
+
+def _addCombinedPiece(piece, combinedPieces, rotate=True):
+    if rotate:
+        for item in combinedPieces:
+            for i in range(4):
+                if _rotate(piece, i) == item[0]:
+                    item[1] += 1
+                    return
+        combinedPieces.append([piece[:], 1])
+    else:
+        for item in combinedPieces:
+            if piece == item[0]:
+                item[1] += 1
+                return
+        combinedPieces.append([piece[:], 1])
+        
+            
+def _combinePieces(pieces, rotate=True):
+    combinedPieces = list()
+    for piece in pieces:
+        _addCombinedPiece(piece, combinedPieces, rotate=rotate)
+    return combinedPieces
+   
 
 def generatePuzzle(grid, colors, EMPType='SF', return_='pieces', shuffle=True, rotate=True, seed=None):
     """
