@@ -414,3 +414,21 @@ def isCorrect(grid, EMPType='SF'):
                         if piece[3] != grid[idxRow+1][idxPiece][1]: return False
                     
     return True
+
+def _findUnassignedNeighbours(grid, position):
+    size = len(grid)
+    neighbours = list()
+    neighbours.append((position[0], position[1]+1))
+    neighbours.append((position[0], position[1]-1))
+    neighbours.append((position[0]-1, position[1]))
+    neighbours.append((position[0]+1, position[1]))
+
+    unassignedNeighbours = [x for x in neighbours \
+    if x[0] > -1 and x[1] > -1 \
+    and x[0] < size and x[1] < size\
+    and all(p == -2 or p == None for p in grid[x[0]][x[1]]) ]
+
+    return unassignedNeighbours
+
+
+
