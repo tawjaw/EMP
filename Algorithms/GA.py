@@ -1,134 +1,122 @@
-from EMP.EMP import generatePuzzle, drawPuzzle, _validPiece, loadPieces
+from EMP.EMP import generatePuzzle, drawPuzzle, _validPiece, loadPieces, _solutionEdgesNotMatch
 import copy
 from random import shuffle
 import random
+import numpy as np
+import time
+import math
 
 class Individual:
-    piecesDict = None
-    size = None
+    
+    
     rotate = False
-    def __init__(self):
+    def __init__(self, piecesDict, size):
         if Individual.rotate == False:
-            self.pieces = [(x,0) for x in range(0,Individual.size*Individual.size)]
-            shuffle(self.pieces)
+            self.size=size
+            self.representation=np.arange(0, self.size*self.size).reshape(self.size,self.size)
+            np.random.shuffle(self.representation)
         else:
             assert("with rotate not implemented")
         
-        self.evaluateFitness()
+        self.evaluateFitness(piecesDict)
         
     
-    def _solutionEdgesNotMatch(grid):
 
-        gridSize_Y = Individual.size
-        gridSize_X = Individual.size
-
-        edgesNotMatch = 0
-
-        for idxRow, row in enumerate(grid):
-            for idxPiece, piece in enumerate(row):
-                if _validPiece(piece):
-                    #left edge
-                    if not(idxPiece == 0  or not _validPiece(grid[idxRow][idxPiece-1])):
-                        if piece[0] != grid[idxRow][idxPiece-1][2]: edgesNotMatch += 1
-                    #top edge
-                    if not(idxRow == 0 or not _validPiece(grid[idxRow-1][idxPiece])):
-                        if piece[1] != grid[idxRow-1][idxPiece][3]: edgesNotMatch += 1
-                    #right edge
-                    if not(idxPiece == gridSize_X-1 or not _validPiece(grid[idxRow][idxPiece+1])):
-                        if piece[2] != grid[idxRow][idxPiece+1][0]: edgesNotMatch += 1
-                    #bottom edge
-                    if not(idxRow == gridSize_Y-1 or not _validPiece(grid[idxRow+1][idxPiece])):
-                        if piece[3] != grid[idxRow+1][idxPiece][1]: edgesNotMatch += 1
-
-                #print(idxRow, idxPiece, count)
-
-
-        return edgesNotMatch
     
     def mutateRegionExchange(self):
-        size = len(self.pieces) - 1
-        notSame = True
+        error = True
+        while(error):
+            x1 = random.randint(0, self.size-1)
+            x2max=self.size if x1 > math.ceil(self.size/2)-1 else (x1+math.ceil(self.size/2))
+            x2 = random.randint(x1+1,x2max)
+            y1 = random.randint(0, self.size-1)
+            y2max=self.size if y1 > math.ceil(self.size/2)-1 else (y1+math.ceil(self.size/2))
+            y2 = random.randint(y1+1,y2max)
+            #error = False
+            xsize = x2-x1
+            ysize = y2-y1
+            xx1 = random.randint(0, self.size-1)
+            xx2= None
+            if xx1+xsize > self.size: 
+                #error x
+                continue
+            else: xx2 = xx1+xsize
+            yy1 = random.randint(0,self.size-1)
+            yy2 = None
+            if yy1+ysize > self.size: 
+                #error y
+                continue
+            else: yy2 = yy1+ysize
 
-        while(notSame):
-            randomPiece1 = random.randint(0, size)
-            randomPiece2 = random.randint(0, size)
-            #print(randomPiece1, randomPiece2)
-            if randomPiece1 != randomPiece2:
-                notSame = False
-                self.pieces[randomPiece1], self.pieces[randomPiece2] = self.pieces[randomPiece2], self.pieces[randomPiece1]
+            if(not (abs(x1-xx1) >= xsize or abs(y1-yy1) >= ysize)): 
+                #overlap
+                continue
 
-    def crossover(ind1, ind2):
-        size = Individual.size*Individual.size -1
-        randomRegionStart = random.randint(0, size)
-        randomRegionEnd = random.randint(randomRegionStart, size)
-        indiv2Temp = copy.deepcopy(ind2)
-        offspring = copy.deepcopy(ind1)
-        region2 = list()
-        temp = list()
-        #print(ind1.pieces, ind2.pieces)
-        #print(randomRegionStart, randomRegionEnd)
-        for i in range(randomRegionStart, randomRegionEnd+1):
-            temp.append(offspring.pieces[i])
-            region2.append(indiv2Temp.pieces[i])
-        
-        #print("temp", temp)
+            #make the swap 
+            temp = np.copy(self.representation[x1:x2,y1:y2])
+            self.representation[x1:x2,y1:y2] = self.representation[xx1:xx2,yy1:yy2]
+            self.representation[xx1:xx2,yy1:yy2] = temp
+            error=False
 
-        #print("offspring", offspring.pieces)
-        #print("region2", region2)
-        
-        temp = [x for x in temp if x not in region2]
-        
-        for idx, item in enumerate(offspring.pieces):
-            if item in region2:
-                offspring.pieces[idx] = None
-        #print("offspring", offspring.pieces)
 
-        for i in range(randomRegionStart, randomRegionEnd+1):
-            offspring.pieces[i] = indiv2Temp.pieces[i]
-        #print("offspring", offspring.pieces)
-        #print("temp", temp)
-        
-        
-        
-        shuffle(temp)
-        for idx, item in enumerate(offspring.pieces):
-            if item is None:
-                offspring.pieces[idx] = temp.pop(0)
-        #print("offspring", offspring.pieces)
-        #if len(set(offspring.pieces)) != 9: assert()
+    def crossover(indiv1, indiv2):
+        if indiv1.size != indiv2.size: assert("individuals must be of same size for crossover")
+        size=indiv1.size
+        #select region 
+        x1 = random.randint(0, size-1)
+        x2max= size if x1 > math.ceil(size/2)-1 else (x1+math.ceil(size/2))
+        x2 = random.randint(x1+1,x2max)
+        y1 = random.randint(0, size-1)
+        y2max= size if y1 > math.ceil(size/2)-1 else (y1+math.ceil(size/2))
+        y2 = random.randint(y1+1,y2max)
+        #clone parentA
+        offspring = copy.deepcopy(indiv1)
+        #print(offspring.representation)
+        regionB_pieces = list(indiv2.representation[x1:x2,y1:y2].flatten())
+        offspring_flattened = offspring.representation.flatten()
+        for i in range(offspring_flattened.shape[0]):
+            if offspring_flattened[i] in regionB_pieces:
+                offspring_flattened[i] = -1
+
+        offspring.representation = offspring_flattened.reshape(size,size)
+        remaining_tiles = list(offspring.representation[x1:x2,y1:y2].flatten())
+        remaining_tiles = [x for x in remaining_tiles if x!=-1]
+        offspring.representation[x1:x2,y1:y2] = indiv2.representation[x1:x2,y1:y2].copy()
+
+        random.shuffle(remaining_tiles)
+
+        for i in range(size):
+            for j in range(size):
+                if offspring.representation[i][j] == -1:
+                    offspring.representation[i][j] = remaining_tiles.pop()
+
         return offspring
     
-    def evaluateFitness(self):
-        grid =[[[ None for x in range(4)]for y in range(Individual.size)] for p in range(Individual.size)]
-
-        piece = 0
-
-        for idxrow, row in enumerate(grid):
-            for idxpos, position in enumerate(row):
-                #print()
-                grid[idxrow][idxpos] = list(Individual.piecesDict[self.pieces[piece][0]])
-                piece += 1
-        self.fitness =  Individual._solutionEdgesNotMatch(grid)/2
+    def evaluateFitness(self, piecesDict):
+        self.fitness =  _solutionEdgesNotMatch(self.to_grid(piecesDict), self.size)
         
-    def to_grid(self):
-        grid =[[[ None for x in range(4)]for y in range(Individual.size)] for p in range(Individual.size)]
+    def to_grid(self, piecesDict):
+        grid =[[[ None for x in range(4)]for y in range(self.size)] for p in range(self.size)]
 
         piece = 0
 
         for idxrow, row in enumerate(grid):
             for idxpos, position in enumerate(row):
                 #print()
-                grid[idxrow][idxpos] = list(Individual.piecesDict[self.pieces[piece][0]])
+                grid[idxrow][idxpos] = list(piecesDict[self.representation[idxrow][idxpos]])
                 piece += 1
         return grid
         
 class Population:
-    def __init__(self, pieces, EMPsize, popSize, parentSize, offspringSize, mutationParam, crossoverParam, elitism, tournament, maxGeneration=None):
+    def __init__(self, pieces, EMPsize, popSize, parentSize, offspringSize, mutationParam, crossoverParam, elitism, tournament, maxGeneration=None, maxTime=None):
         self.maxGeneration=maxGeneration
+        self.maxTime=maxTime
+        if maxTime != None:
+            self.startTime = time.time()
         self.pieces = pieces
+        self._createPiecesDictionary()
         self.EMPsize = EMPsize
-        Individual.piecesDict = dict(self._assignPieceId(pieces))
-        Individual.size = self.EMPsize
+        self.compCost=0
         
         self.popSize = popSize
         self.parentSize = parentSize
@@ -140,21 +128,24 @@ class Population:
         self.individuals = list()
         self.generation = 0
         for _ in range(popSize):
-            self.individuals.append(Individual())
+            self.individuals.append(Individual(self.piecesDict, self.EMPsize))
+            self.compCost+=self.EMPsize*self.EMPsize
         self.fittest = None
         
         ## assign fittest indiv
         self.individuals.sort(key=lambda x: x.fitness, reverse=False)
         self.fittest = self.individuals[0]
+        self.fittest_grid = self.individuals[0].to_grid(self.piecesDict)
+        
+    def _createPiecesDictionary(self):
+            temp = list()
+            i = 0
+            for piece in self.pieces:
+                temp.append((i,copy.deepcopy(piece)))
+                i += 1
 
- 
-    def _assignPieceId(self,pieces):
-        individual = list()
-        i = 0
-        for piece in pieces:
-            individual.append((i,copy.deepcopy(piece)))
-            i += 1
-        return individual
+            self.piecesDict = dict(temp)
+        
 
 
     def evolve(self):
@@ -162,6 +153,7 @@ class Population:
             self.generation += 1
             
             if self.maxGeneration != None and self.generation > self.maxGeneration: return
+            if self.maxTime != None and (time.time()-self.startTime)/60 > self.maxTime: return 
             #print("generation", self.generation, "fittest", self.fittest.fitness)
             ## elitism 
             ## individuals already sorted
@@ -171,7 +163,7 @@ class Population:
                 parents.append(self.individuals[x])
     
             ## parent selection
-            ## tournament selection size 3
+            ## tournament selection
             parents = list()
             while len(parents) != self.parentSize:
                 
@@ -191,20 +183,23 @@ class Population:
                     randomParent = random.sample(parents, 1)
                     child = copy.deepcopy(randomParent[0])
                     child.mutateRegionExchange()
-                    child.evaluateFitness()
+                    child.evaluateFitness(self.piecesDict)
                     offsprings.append(child)
                 else:
                     randomParents = random.sample(parents, 2)
                     child = Individual.crossover(randomParents[0], randomParents[1])
-                    child.evaluateFitness()
+                    child.evaluateFitness(self.piecesDict)
                     offsprings.append(child)
-                    
-            ## survivol selection
+                
+                self.compCost+=self.EMPsize*self.EMPsize
+            ## survival selection
             newPopulation = parents + offsprings
             
             newPopulation.sort(key=lambda x: x.fitness, reverse=False)
             self.individuals = newPopulation[:self.popSize]
             self.fittest = self.individuals[0]
+            self.fittest_grid = self.individuals[0].to_grid(self.piecesDict)
+
                 
 
             

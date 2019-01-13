@@ -430,5 +430,28 @@ def _findUnassignedNeighbours(grid, position):
 
     return unassignedNeighbours
 
+def _solutionEdgesNotMatch(grid, size):
 
+    gridSize_Y = size
+    gridSize_X = size
+
+    edgesNotMatch = 0
+
+    for idxRow, row in enumerate(grid):
+        for idxPiece, piece in enumerate(row):
+            if _validPiece(piece):
+                #left edge
+                if not(idxPiece == 0  or not _validPiece(grid[idxRow][idxPiece-1])):
+                    if piece[0] != grid[idxRow][idxPiece-1][2]: edgesNotMatch += 1
+                #top edge
+                if not(idxRow == 0 or not _validPiece(grid[idxRow-1][idxPiece])):
+                    if piece[1] != grid[idxRow-1][idxPiece][3]: edgesNotMatch += 1
+                #right edge
+                if not(idxPiece == gridSize_X-1 or not _validPiece(grid[idxRow][idxPiece+1])):
+                    if piece[2] != grid[idxRow][idxPiece+1][0]: edgesNotMatch += 1
+                #bottom edge
+                if not(idxRow == gridSize_Y-1 or not _validPiece(grid[idxRow+1][idxPiece])):
+                    if piece[3] != grid[idxRow+1][idxPiece][1]: edgesNotMatch += 1
+
+    return edgesNotMatch/2
 
