@@ -1,4 +1,3 @@
-from PIL import Image, ImageDraw
 import random
 import csv
 
@@ -25,6 +24,8 @@ def _drawPiece(dr, position, piece, colors, pieceLength):
     """
     Position: top left corner of the square to draw the puzzle
     """
+    from PIL import Image, ImageDraw
+
     if all(x == -1 for x in piece): return 
     elif all(x == -2 or x == None for x in piece):
         dr.polygon([(position[0],position[1]), (position[0]+pieceLength/2, position[1]+pieceLength/2),
@@ -69,6 +70,8 @@ def drawPuzzle(puzzle, pieceLength=100, colors=None):
             Default color list: ["black","blue","brown","red","yellow","green","orange","beige","turquoise","pink"]
             It is recommended to keep "black" at index 0 as it is used to draw frames in framed EMPs.
     """
+    from PIL import Image, ImageDraw
+
     if colors == None:
         colors =["black","blue","brown","red","yellow","green","orange","beige","turquoise","pink",'indianred',
  'magenta', 'darkviolet', 'salmon', 'lightcyan', 'darkslateblue', 'snow', 'blueviolet', 'dimgrey', 'cyan', 'deeppink',
@@ -365,7 +368,7 @@ def generatePuzzle(grid, colors, EMPType='SF', return_='pieces', shuffle=True, r
         return (pieces, id)
 
 
-def isCorrect(grid, EMPType='SF'):
+def isCorrect(grid, EMPType='S'):
     """
     Returns True if the pieces on the grid are correct. Else returns False.
 
@@ -414,6 +417,61 @@ def isCorrect(grid, EMPType='SF'):
                         if piece[3] != grid[idxRow+1][idxPiece][1]: return False
                     
     return True
+
+def _isCorrectWithCompCost(grid, EMPType='S'):
+    """
+    Returns tuple of True if the pieces on the grid are correct Else returns False,
+    and computational cost where the computational cost is everytime the constraints
+    of a piece is checked.
+
+    grid: grid of the puzzle.
+    EMPType: 'SF' for square framed EMP. 'S' for square none framed EMP.
+    """
+    gridSize_Y = len(grid)
+    gridSize_X = len(grid[0])
+    compCost=0
+    if EMPType not in ['SF','S']:
+        raise AssertionError("EMPType "+EMPType+" not defined.")
+    if EMPType == 'SF':
+        #check corners
+        for idxRow, row in enumerate(grid):
+            for idxPiece, piece in enumerate(row):
+                if _validPiece(piece):
+                    compCost+=1
+                    #left edge
+                    if idxPiece == 0  or not _validPiece(grid[idxRow][idxPiece-1]):
+                        if piece[0] != 0: return (False, compCost)
+                    #Top edge
+                    if idxRow == 0 or not _validPiece(grid[idxRow-1][idxPiece]):
+                        if piece[1] != 0: return (False, compCost)
+                    #Right edge
+                    if idxPiece == gridSize_X-1 or not _validPiece(grid[idxRow][idxPiece+1]):
+                        if piece[2] != 0: return (False, compCost)
+                    #Bottom edge
+                    if idxRow == gridSize_Y-1 or not _validPiece(grid[idxRow+1][idxPiece]):
+                        if piece[3] != 0: return (False, compCost)
+
+
+    if EMPType == 'SF' or EMPType == 'S':
+        for idxRow, row in enumerate(grid):
+            for idxPiece, piece in enumerate(row):
+                if _validPiece(piece):
+                    compCost+=1
+                    #left edge
+                    if not(idxPiece == 0  or not _validPiece(grid[idxRow][idxPiece-1])):
+                        if piece[0] != grid[idxRow][idxPiece-1][2]: return (False, compCost)
+                    #top edge
+                    if not(idxRow == 0 or not _validPiece(grid[idxRow-1][idxPiece])):
+                        if piece[1] != grid[idxRow-1][idxPiece][3]: return (False, compCost)
+                    #right edge
+                    if not(idxPiece == gridSize_X-1 or not _validPiece(grid[idxRow][idxPiece+1])):
+                        if piece[2] != grid[idxRow][idxPiece+1][0]: return (False, compCost)
+                    #bottom edge
+                    if not(idxRow == gridSize_Y-1 or not _validPiece(grid[idxRow+1][idxPiece])):
+                        if piece[3] != grid[idxRow+1][idxPiece][1]: return (False, compCost)
+                    
+    return (True, compCost)
+
 
 def _findUnassignedNeighbours(grid, position):
     size = len(grid)
