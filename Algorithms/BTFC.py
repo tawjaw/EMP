@@ -1,5 +1,7 @@
 import copy
-from EMP.EMP import _rotate, _validPiece, _emptyPiece, _pieceMatch, _removePiece, _nextPosition, _combinePieces, _addCombinedPiece, _findUnassignedNeighbours
+from EMP.EMP import _rotate, _validPiece, _emptyPiece, _pieceMatch, _removePiece, _nextPosition, _combinePieces, _addCombinedPiece, _findDomainAffectedPositions
+
+from EMP.EMP import drawPuzzle
 
 class BTFC:
     
@@ -26,11 +28,10 @@ class BTFC:
         self.bestLevel = 0
         self.compBudget = compBudget
         self._searchLevel = 0
-    
+
     def _isEmptyDomainFC(self, position):
-        unassignedNeighbours = _findUnassignedNeighbours(self.grid, position)
-        emptyDomain = False
-        for n in unassignedNeighbours:
+        domainAffectedPositions = _findDomainAffectedPositions(self.grid, position)
+        for n in domainAffectedPositions:
             empty = True
             for piece in self.combinedPieces:
                 if piece[1] > 0:
@@ -40,10 +41,8 @@ class BTFC:
                     if _pieceMatch(self.grid, piece[0], n, EMPType=self.EMPType):
                         empty = False
                         break
-            emptyDomain = emptyDomain or empty
-        return emptyDomain
-
-
+            if empty: return True
+        return False
 
 
 
@@ -72,7 +71,7 @@ class BTFC:
 
                     
                     else: raise Exception("piece not in list to remove")
-                 
+
                     if not self._isEmptyDomainFC(pos) and self.search(position=_nextPosition(self.grid, pos)):
                         return True
                     else:

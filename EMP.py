@@ -488,6 +488,44 @@ def _findUnassignedNeighbours(grid, position):
 
     return unassignedNeighbours
 
+def _findDomainAffectedPositions(grid, position):
+    """
+    This function returns the positions of pieces that their domain is affected by
+    the pieces fit on the grid. This method assumes the same order of search being followed
+    by all the BT version algorithms; starting from the top left corner and filling uo
+    row after the other from left to right. It does not check whether those positions are
+    empty or filled with pieces as they should be empty if the order of search is followed.
+    It also assumes the grid is a square grid where the width and height are equal. NxN puzzle.
+
+    grid: is the grid of the puzzle with the empty positions having -2 or None pieces.
+    position: a tuple representing the position of the piece that is last placed. 
+    """
+
+    size = len(grid)
+    if size < 2: return list()
+    positions = list()
+
+    if position[0] < size-1: 
+        ## return all the positions below the piece being placed and to the left
+        ## till the beginning of the grid except if the row is the last row
+        i=position[1]
+        while(i > -1):
+            positions.append((position[0]+1,i))
+
+            i-=1
+    if position[0] > 0:
+        ## return the positions to the right of the piece being placed skipping
+        ## the position directly to the right as it will be checekd in the next 
+        ## iteration of the search immediatly. First row doesnt need the check.
+        i=position[1]+2 # +2 for the skip. no need to check if its the end. while will do that.
+        while(i < size):
+            positions.append((position[0], i))
+            i+=1
+    return positions
+
+
+
+
 def _solutionEdgesNotMatch(grid, size):
 
     gridSize_Y = size
